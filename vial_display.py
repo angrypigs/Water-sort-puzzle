@@ -5,10 +5,11 @@ def create_vial(surf: tk.Canvas, x: float, y: float,
     """
     Create vial-shaped group of shapes with given tag
     """
+    surf.create_rectangle(x, y-20, x+60, y+180, outline="", fill="", tags=tag)
     surf.create_arc(x, y+120, x+60, y+180, start=180, extent=180, style=tk.ARC,
                     outline=color, tags=tag, width=2)
-    surf.create_line(x, y, x, y+150, fill=color, tags=tag, width=2)
-    surf.create_line(x+60, y, x+60, y+150, fill=color, tags=tag, width=2)
+    surf.create_line(x, y-20, x, y+150, fill=color, tags=tag, width=2)
+    surf.create_line(x+60, y-20, x+60, y+150, fill=color, tags=tag, width=2)
 
 def create_vial_fill(surf: tk.Canvas, x: float, y: float, 
                      part: int, tag: str|tuple = "", color: str = "#000000") -> None:
@@ -21,5 +22,5 @@ def create_vial_fill(surf: tk.Canvas, x: float, y: float,
     else: 
         surf.create_rectangle(x+1, y+135, x+59, y+150, 
                               fill=color, tags=tag, outline="")
-        surf.create_arc(x+2, y+120, x+58, y+178, start=180, extent=180, style=tk.CHORD,
+        surf.create_arc(x+2, y+120, x+58, y+179, start=180, extent=180, style=tk.CHORD,
                         fill=color, outline="", tags=tag)
