@@ -1,6 +1,7 @@
 import tkinter as tk
 import random
 import math
+import time
 import vial_display as VialDisplay
 import PIL
 import os
@@ -11,7 +12,7 @@ class App:
     def __init__(self) -> None:
         # declare constants
         self.HEIGHT = 700
-        self.WIDTH = 800
+        self.WIDTH = 1000
         self.LIQUID_COLORS = [["", "#DA2020", "#E7DB14", "#74D81C", "#1C9BD8", "#E89115", "#6B16C5", 
                                "#BDDB3D", "#D61FEB", "#1DDBE0", "#D919B1", 
                                "#249E18", "#313DB8", "#842A2A", "#868686"]]
@@ -24,7 +25,7 @@ class App:
         self.master.title("Water sort puzzle")
         self.master.geometry(f"{self.WIDTH}x{self.HEIGHT}")
         self.canvas = tk.Canvas(self.master, height=self.HEIGHT, width=self.WIDTH, bd=0,
-                                highlightthickness=0, bg="#DDDDDD")
+                                highlightthickness=0, bg="#152045")
         self.canvas.place(x=0,y=0)
         self.new_game()
         self.master.mainloop()
@@ -73,7 +74,7 @@ class App:
         for i in range(len(self.vials)):
             VialDisplay.create_vial(self.canvas, 
                                         self.vial_dist[self.vial_row(i)]*(self.vial_col(i)+1)+self.vial_col(i)*60, 
-                                        100+self.vial_row(i)*250, f"vial{i}")
+                                        100+self.vial_row(i)*250, f"vial{i}", "#FFFFFF")
             self.canvas.tag_bind(f"vial{i}", "<Button-1>", link(i))
             if self.vials[i]!=[0, 0, 0, 0]:
                 self.update_vial(i)
@@ -84,11 +85,14 @@ class App:
         """
         for i in range(4):
             self.canvas.delete(f"liquid{index}_{i}")
-            VialDisplay.create_vial_fill(self.canvas, 
-                                         self.vial_dist[self.vial_row(index)]*(self.vial_col(index)+1)
-                                         +60*self.vial_col(index), 100+self.vial_row(index)*250, 3-i, 
-                                         (f"liquid{index}_{i}", f"vial{index}"), 
-                                         self.LIQUID_COLORS[0][self.vials[index][i]])
+            if self.vials[index][i] != 0:
+                print(i)
+                VialDisplay.create_vial_fill(self.canvas, 
+                                            self.vial_dist[self.vial_row(index)]*(self.vial_col(index)+1)
+                                            +60*self.vial_col(index), 100+self.vial_row(index)*250, 3-i, 
+                                            (f"liquid{index}_{i}", f"vial{index}"), 
+                                            self.LIQUID_COLORS[0][self.vials[index][i]])
+        print()
         self.canvas.tag_bind(f"vial{index}", "<Button-1>", lambda event: self.vial_onclick(index))
     
     def vial_onclick(self, index: int) -> None:
@@ -97,14 +101,13 @@ class App:
         """
         if self.current_vial == -1 and self.vials[index].count(0) != 4:
             self.current_vial = index
+            VialDisplay.pick_vial(self.canvas, index, True)
         elif self.current_vial != -1:
             new_one = self.top_layer_quantity(index)
             old_one = self.top_layer_quantity(self.current_vial)
-            print(self.current_vial, index)
-            print(old_one, new_one)
             if old_one[0] <= self.vials[index].count(0) and (old_one[1]==new_one[1] or new_one[1] == 0):
                 new_one[0] = old_one[0]
-                for i in range(3):
+                for i in range(4):
                     if self.vials[index][i] == 0:
                         self.vials[index][i] = old_one[1]
                         old_one[0] -= 1
@@ -116,9 +119,16 @@ class App:
                         new_one[0] -= 1
                     if new_one[0] == 0:
                         break
+            VialDisplay.pick_vial(self.canvas, self.current_vial, False)
             self.update_vial(self.current_vial)
             self.update_vial(index)
             self.current_vial = -1
+            for i in self.vials:
+                print(i)
+            print()
+            
+    
+    
 
 if __name__ == "__main__":
     App()

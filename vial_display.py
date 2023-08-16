@@ -1,4 +1,12 @@
 import tkinter as tk
+import time
+
+def pick_vial(surf: tk.Canvas, index: int, on_off: bool) -> None:
+    n = -1 if on_off else 1
+    for i in range(20):
+        surf.move(f"vial{index}", 0, 2*n)
+        time.sleep(0.001)
+        surf.update()
 
 def create_vial(surf: tk.Canvas, x: float, y: float, 
                 tag: str|tuple = "", color: str = "#000000") -> None:
@@ -12,7 +20,7 @@ def create_vial(surf: tk.Canvas, x: float, y: float,
     surf.create_line(x+60, y-20, x+60, y+150, fill=color, tags=tag, width=2)
 
 def create_vial_fill(surf: tk.Canvas, x: float, y: float, 
-                     part: int, tag: str|tuple = "", color: str = "#000000") -> None:
+                     part: int, tag: str|tuple, color: str = "#000000") -> None:
     """
     Create fill of given part of vial
     """
