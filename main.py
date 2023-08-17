@@ -3,9 +3,9 @@ import random
 import math
 import time
 import vial_display as VialDisplay
-import PIL
 import os
 import sys
+from tkinter import font
 
 class App:
 
@@ -13,20 +13,28 @@ class App:
         # declare constants
         self.HEIGHT = 700
         self.WIDTH = 1000
-        self.LIQUID_COLORS = [["", "#DA2020", "#E7DB14", "#74D81C", "#1C9BD8", "#E89115", "#6B16C5", 
-                               "#BDDB3D", "#D61FEB", "#1DDBE0", "#D919B1", 
-                               "#249E18", "#313DB8", "#842A2A", "#868686"]]
+        self.LIQUID_COLORS = [["", "#B91A1A", "#112B8B", "#1A9924", "#D8C929", "#881FAE", "#A14F5F", 
+                               "#B4693F", "#105616", "#5C1578", "#0EA8A3", 
+                               "#A78760", "#4768DF", "#A9267B", "#60462B"]]
         # declare variables
         self.vials = []
+        self.previous_vials = []
         self.vial_dist = [0, 0]
         self.current_vial = -1
         # init app
         self.master = tk.Tk()
         self.master.title("Water sort puzzle")
         self.master.geometry(f"{self.WIDTH}x{self.HEIGHT}")
+        self.master.resizable(False, False)
         self.canvas = tk.Canvas(self.master, height=self.HEIGHT, width=self.WIDTH, bd=0,
                                 highlightthickness=0, bg="#152045")
         self.canvas.place(x=0,y=0)
+        self.canvas.create_oval(self.WIDTH-80, 20, self.WIDTH-20, 80, width=3, fill="#31499B",
+                                outline="#0F1939", tags=("undo_btn"))
+        self.canvas.create_text(self.WIDTH-50, 50, justify='center', anchor='center',
+                                text="\u293A", font=font.Font(size=30, weight='bold'),
+                                fill="#0F1939", state='disabled')
+        self.canvas.tag_bind("undo_btn", "<Button-1>", lambda event: self.undo_move())
         self.new_game()
         self.master.mainloop()
 
@@ -68,16 +76,16 @@ class App:
         for i in range(len(self.vials)):
             if self.vials[i] == []:
                 self.vials[i] = [0 for i in range(4)]
+        self.previous_vials = [[x[:] for x in self.vials]]
         self.vial_dist = [(self.WIDTH-60*math.ceil(len(self.vials)/2))/(math.ceil(len(self.vials)/2)+1),
                                (self.WIDTH-60*len(self.vials)//2)/(len(self.vials)//2+1)]
         link = lambda x: (lambda event: self.vial_onclick(x))
         for i in range(len(self.vials)):
             VialDisplay.create_vial(self.canvas, 
                                         self.vial_dist[self.vial_row(i)]*(self.vial_col(i)+1)+self.vial_col(i)*60, 
-                                        100+self.vial_row(i)*250, f"vial{i}", "#FFFFFF")
+                                        170+self.vial_row(i)*300, f"vial{i}", "#FFFFFF")
             self.canvas.tag_bind(f"vial{i}", "<Button-1>", link(i))
-            if self.vials[i]!=[0, 0, 0, 0]:
-                self.update_vial(i)
+            self.update_vial(i)
 
     def update_vial(self, index: int) -> None:
         """
@@ -86,15 +94,23 @@ class App:
         for i in range(4):
             self.canvas.delete(f"liquid{index}_{i}")
             if self.vials[index][i] != 0:
-                print(i)
                 VialDisplay.create_vial_fill(self.canvas, 
                                             self.vial_dist[self.vial_row(index)]*(self.vial_col(index)+1)
-                                            +60*self.vial_col(index), 100+self.vial_row(index)*250, 3-i, 
+                                            +60*self.vial_col(index), 170+self.vial_row(index)*300, 3-i, 
                                             (f"liquid{index}_{i}", f"vial{index}"), 
                                             self.LIQUID_COLORS[0][self.vials[index][i]])
-        print()
         self.canvas.tag_bind(f"vial{index}", "<Button-1>", lambda event: self.vial_onclick(index))
     
+    def undo_move(self) -> None:
+        """
+        Restore vials to state before last move
+        """
+        if len(self.previous_vials) > 1:
+            self.previous_vials.pop(-1)
+            self.vials = [x[:] for x in self.previous_vials[-1]]
+            for i in range(len(self.vials)):
+                self.update_vial(i)
+
     def vial_onclick(self, index: int) -> None:
         """
         Method connected to left-click on vial
@@ -119,16 +135,13 @@ class App:
                         new_one[0] -= 1
                     if new_one[0] == 0:
                         break
+                if len(self.previous_vials) == 6:
+                    self.previous_vials.pop(0)
+                self.previous_vials.append([x[:] for x in self.vials])
             VialDisplay.pick_vial(self.canvas, self.current_vial, False)
             self.update_vial(self.current_vial)
             self.update_vial(index)
             self.current_vial = -1
-            for i in self.vials:
-                print(i)
-            print()
-            
-    
-    
 
 if __name__ == "__main__":
     App()
