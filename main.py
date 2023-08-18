@@ -35,8 +35,15 @@ class App:
                                 text="\u293A", font=font.Font(size=30, weight='bold'),
                                 fill="#0F1939", state='disabled')
         self.canvas.tag_bind("undo_btn", "<Button-1>", lambda event: self.undo_move())
-        self.new_game()
+        self.load_game()
         self.master.mainloop()
+
+    def res_path(self, rel_path: str) -> str:
+        try:
+            base_path = sys._MEIPASS
+        except Exception:
+            base_path = sys.path[0]
+        return os.path.join(base_path, rel_path)
 
     def top_layer_quantity(self, index: int) -> list:
         """
@@ -86,6 +93,7 @@ class App:
                                         170+self.vial_row(i)*300, f"vial{i}", "#FFFFFF")
             self.canvas.tag_bind(f"vial{i}", "<Button-1>", link(i))
             self.update_vial(i)
+        self.save_game()
 
     def update_vial(self, index: int) -> None:
         """
@@ -110,6 +118,45 @@ class App:
             self.vials = [x[:] for x in self.previous_vials[-1]]
             for i in range(len(self.vials)):
                 self.update_vial(i)
+            self.save_game()
+
+    def save_game(self) -> None:
+        """
+        Save the game status to save.txt
+        """
+        file = open(self.res_path("save.txt"), "w")
+        file.write(";".join([":".join([str(bin(y)) for y in x]) for x in self.vials])+"\n")
+        for i in self.previous_vials:
+            file.write(";".join([":".join([str(bin(y)) for y in x]) for x in i])+"\n")
+        file.close()
+
+    def load_game(self) -> bool:
+        """
+        Try to load game status from save.txt, when encounter an error call for new game
+        """
+        try:
+            file = open(self.res_path("save.txt"), "r").readlines()
+            for i in range(len(file)):
+                if i == 0:
+                    self.vials = [[int(y, 2) for y in z] for z in 
+                                  [x.split(":") for x in file[i].rstrip().split(";")]]
+                else:
+                    self.previous_vials.append([[int(y, 2) for y in z] for z in 
+                                                [x.split(":") for x in file[i].rstrip().split(";")]])
+            self.vial_dist = [(self.WIDTH-60*math.ceil(len(self.vials)/2))/(math.ceil(len(self.vials)/2)+1),
+                               (self.WIDTH-60*len(self.vials)//2)/(len(self.vials)//2+1)]
+            link = lambda x: (lambda event: self.vial_onclick(x))
+            for i in range(len(self.vials)):
+                VialDisplay.create_vial(self.canvas, 
+                                            self.vial_dist[self.vial_row(i)]*(self.vial_col(i)+1)+self.vial_col(i)*60, 
+                                            170+self.vial_row(i)*300, f"vial{i}", "#FFFFFF")
+                self.canvas.tag_bind(f"vial{i}", "<Button-1>", link(i))
+                self.update_vial(i)
+            return True
+        except Exception as e:
+            print(e)
+            self.new_game()
+            return False
 
     def vial_onclick(self, index: int) -> None:
         """
@@ -138,6 +185,7 @@ class App:
                 if len(self.previous_vials) == 6:
                     self.previous_vials.pop(0)
                 self.previous_vials.append([x[:] for x in self.vials])
+                self.save_game()
             VialDisplay.pick_vial(self.canvas, self.current_vial, False)
             self.update_vial(self.current_vial)
             self.update_vial(index)
