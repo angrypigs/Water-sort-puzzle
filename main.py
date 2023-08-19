@@ -16,26 +16,31 @@ class App:
         self.LIQUID_COLORS = [["", "#B91A1A", "#112B8B", "#1A9924", "#D8C929", "#881FAE", "#A14F5F", 
                                "#B4693F", "#105616", "#5C1578", "#0EA8A3", 
                                "#A78760", "#4768DF", "#A9267B", "#60462B"]]
+        # gui colors (0 - main bg, 1 - outlines, 2 - buttons bg)
+        self.GUI_COLORS = [["#20273F", "#0F1939", "#31499B"]]
         # declare variables
         self.vials = []
         self.previous_vials = []
         self.vial_dist = [0, 0]
         self.current_vial = -1
+        self.flag_menu = False
         # init app
         self.master = tk.Tk()
         self.master.title("Water sort puzzle")
         self.master.geometry(f"{self.WIDTH}x{self.HEIGHT}")
         self.master.resizable(False, False)
+        self.normal_font = lambda s, w: font.Font(family="Gill Sans MT", size=s, weight=w)
         self.canvas = tk.Canvas(self.master, height=self.HEIGHT, width=self.WIDTH, bd=0,
-                                highlightthickness=0, bg="#152045")
+                                highlightthickness=0, bg=self.GUI_COLORS[0][0])
         self.canvas.place(x=0,y=0)
-        self.canvas.create_oval(self.WIDTH-80, 20, self.WIDTH-20, 80, width=3, fill="#31499B",
-                                outline="#0F1939", tags=("undo_btn"))
+        self.canvas.create_oval(self.WIDTH-80, 20, self.WIDTH-20, 80, width=3, fill=self.GUI_COLORS[0][2],
+                                outline=self.GUI_COLORS[0][1], tags=("undo_btn"))
         self.canvas.create_text(self.WIDTH-50, 50, justify='center', anchor='center',
                                 text="\u293A", font=font.Font(size=30, weight='bold'),
                                 fill="#0F1939", state='disabled')
         self.canvas.tag_bind("undo_btn", "<Button-1>", lambda event: self.undo_move())
         self.load_game()
+        self.check_win()
         self.master.mainloop()
 
     def res_path(self, rel_path: str) -> str:
@@ -72,6 +77,7 @@ class App:
         """
         Generate new game
         """
+        self.canvas.delete("win_panel")
         for i in range(16):
             self.canvas.delete(f"vial{i}")
         n = random.randint(8, 16)
@@ -120,6 +126,30 @@ class App:
                 self.update_vial(i)
             self.save_game()
 
+    def check_win(self) -> bool:
+        """
+        Check if game is won
+        """
+        for i in self.vials:
+            if i.count(i[0]) != 4:
+                return False
+        self.flag_menu = True
+        self.canvas.create_rectangle(100, 100, self.WIDTH-100, self.HEIGHT-100,
+                                     fill=self.GUI_COLORS[0][0], outline=self.GUI_COLORS[0][1], 
+                                     width=3, tags=("win_panel"))
+        self.canvas.create_rectangle(self.WIDTH//2-100, self.HEIGHT-240,
+                                     self.WIDTH//2+100, self.HEIGHT-180,
+                                     fill=self.GUI_COLORS[0][2], outline=self.GUI_COLORS[0][1],
+                                     width=3, tags=("win_panel", "win_restart_btn"))
+        self.canvas.create_text(self.WIDTH//2, self.HEIGHT-210, font=self.normal_font(30, 'normal'),
+                                text="Next level", justify='center', anchor='center',
+                                tags=("win_panel"), state='disabled')
+        self.canvas.tag_raise("win_panel")
+        self.canvas.tag_bind("win_restart_btn", "<Button-1>", lambda event: self.new_game())
+        return True
+        
+    
+
     def save_game(self) -> None:
         """
         Save the game status to save.txt
@@ -162,34 +192,36 @@ class App:
         """
         Method connected to left-click on vial
         """
-        if self.current_vial == -1 and self.vials[index].count(0) != 4:
-            self.current_vial = index
-            VialDisplay.pick_vial(self.canvas, index, True)
-        elif self.current_vial != -1:
-            new_one = self.top_layer_quantity(index)
-            old_one = self.top_layer_quantity(self.current_vial)
-            if old_one[0] <= self.vials[index].count(0) and (old_one[1]==new_one[1] or new_one[1] == 0):
-                new_one[0] = old_one[0]
-                for i in range(4):
-                    if self.vials[index][i] == 0:
-                        self.vials[index][i] = old_one[1]
-                        old_one[0] -= 1
-                    if old_one[0] == 0:
-                        break
-                for i in range(3, -1, -1):
-                    if self.vials[self.current_vial][i] == old_one[1]:
-                        self.vials[self.current_vial][i] = 0
-                        new_one[0] -= 1
-                    if new_one[0] == 0:
-                        break
-                if len(self.previous_vials) == 6:
-                    self.previous_vials.pop(0)
-                self.previous_vials.append([x[:] for x in self.vials])
-                self.save_game()
-            VialDisplay.pick_vial(self.canvas, self.current_vial, False)
-            self.update_vial(self.current_vial)
-            self.update_vial(index)
-            self.current_vial = -1
+        if not self.flag_menu:
+            if self.current_vial == -1 and self.vials[index].count(0) != 4:
+                self.current_vial = index
+                VialDisplay.pick_vial(self.canvas, index, True)
+            elif self.current_vial != -1:
+                new_one = self.top_layer_quantity(index)
+                old_one = self.top_layer_quantity(self.current_vial)
+                if old_one[0] <= self.vials[index].count(0) and (old_one[1]==new_one[1] or new_one[1] == 0):
+                    new_one[0] = old_one[0]
+                    for i in range(4):
+                        if self.vials[index][i] == 0:
+                            self.vials[index][i] = old_one[1]
+                            old_one[0] -= 1
+                        if old_one[0] == 0:
+                            break
+                    for i in range(3, -1, -1):
+                        if self.vials[self.current_vial][i] == old_one[1]:
+                            self.vials[self.current_vial][i] = 0
+                            new_one[0] -= 1
+                        if new_one[0] == 0:
+                            break
+                    if len(self.previous_vials) == 6:
+                        self.previous_vials.pop(0)
+                    self.previous_vials.append([x[:] for x in self.vials])
+                    self.save_game()
+                    self.check_win()
+                VialDisplay.pick_vial(self.canvas, self.current_vial, False)
+                self.update_vial(self.current_vial)
+                self.update_vial(index)
+                self.current_vial = -1
 
 if __name__ == "__main__":
     App()
