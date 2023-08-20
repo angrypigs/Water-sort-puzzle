@@ -17,10 +17,11 @@ class App:
                                "#B4693F", "#105616", "#5C1578", "#0EA8A3", 
                                "#A78760", "#4768DF", "#A9267B", "#60462B"]]
         # gui colors (0 - main bg, 1 - outlines, 2 - buttons bg)
-        self.GUI_COLORS = [["#20273F", "#0F1939", "#31499B"]]
+        self.GUI_COLORS = [["#20273F", "#0F1939", "#31499B", "#36426B"]]
         # declare variables
         self.vials = []
         self.previous_vials = []
+        self.initial_vials = []
         self.vial_dist = [0, 0]
         self.current_vial = -1
         self.flag_menu = False
@@ -33,12 +34,18 @@ class App:
         self.canvas = tk.Canvas(self.master, height=self.HEIGHT, width=self.WIDTH, bd=0,
                                 highlightthickness=0, bg=self.GUI_COLORS[0][0])
         self.canvas.place(x=0,y=0)
-        self.canvas.create_oval(self.WIDTH-80, 20, self.WIDTH-20, 80, width=3, fill=self.GUI_COLORS[0][2],
+        self.canvas.create_oval(self.WIDTH-160, 20, self.WIDTH-100, 80, width=3, fill=self.GUI_COLORS[0][2],
                                 outline=self.GUI_COLORS[0][1], tags=("undo_btn"))
-        self.canvas.create_text(self.WIDTH-50, 50, justify='center', anchor='center',
+        self.canvas.create_text(self.WIDTH-130, 50, justify='center', anchor='center',
                                 text="\u293A", font=font.Font(size=30, weight='bold'),
                                 fill="#0F1939", state='disabled')
+        self.canvas.create_oval(self.WIDTH-80, 20, self.WIDTH-20, 80, width=3, fill=self.GUI_COLORS[0][2],
+                                outline=self.GUI_COLORS[0][1], tags=("restart_btn"))
+        self.canvas.create_text(self.WIDTH-50, 50, justify='center', anchor='center',
+                                text="\u2B6F", font=font.Font(size=30, weight='bold'),
+                                fill="#0F1939", state='disabled')
         self.canvas.tag_bind("undo_btn", "<Button-1>", lambda event: self.undo_move())
+        self.canvas.tag_bind("restart_btn", "<Button-1>", lambda event: self.restart_game())
         self.load_game()
         self.check_win()
         self.master.mainloop()
@@ -52,7 +59,8 @@ class App:
 
     def top_layer_quantity(self, index: int) -> list:
         """
-        Return list with amount of same numbers not including zero starting from end of list and this number,
+        Return list with amount of same numbers not including zero 
+        starting from end of list and this number,
         or [0, 0] if list consists only of zeros
         """
         n = 0
@@ -73,6 +81,15 @@ class App:
     def vial_col(self, index: int) -> int:
         return index%math.ceil(len(self.vials)/2)
 
+    def restart_game(self) -> None:
+        """
+        Restart game to initial state
+        """
+        self.vials = [x[:] for x in self.initial_vials]
+        self.previous_vials = [[x[:] for x in self.initial_vials]]
+        for i in range(len(self.vials)):
+            self.update_vial(i)
+
     def new_game(self) -> None:
         """
         Generate new game
@@ -90,6 +107,7 @@ class App:
             if self.vials[i] == []:
                 self.vials[i] = [0 for i in range(4)]
         self.previous_vials = [[x[:] for x in self.vials]]
+        self.initial_vials = [x[:] for x in self.vials]
         self.vial_dist = [(self.WIDTH-60*math.ceil(len(self.vials)/2))/(math.ceil(len(self.vials)/2)+1),
                                (self.WIDTH-60*len(self.vials)//2)/(len(self.vials)//2+1)]
         link = lambda x: (lambda event: self.vial_onclick(x))
@@ -148,14 +166,14 @@ class App:
         self.canvas.tag_bind("win_restart_btn", "<Button-1>", lambda event: self.new_game())
         return True
         
-    
-
     def save_game(self) -> None:
         """
         Save the game status to save.txt
         """
         file = open(self.res_path("save.txt"), "w")
+        file.write("\n")
         file.write(";".join([":".join([str(bin(y)) for y in x]) for x in self.vials])+"\n")
+        file.write(";".join([":".join([str(bin(y)) for y in x]) for x in self.initial_vials])+"\n")
         for i in self.previous_vials:
             file.write(";".join([":".join([str(bin(y)) for y in x]) for x in i])+"\n")
         file.close()
@@ -165,21 +183,28 @@ class App:
         Try to load game status from save.txt, when encounter an error call for new game
         """
         try:
+            if not os.path.isfile(self.res_path("save.txt")):
+                raise Exception("no file save.txt")
             file = open(self.res_path("save.txt"), "r").readlines()
+            if len(file)==0:
+                raise Exception("file save.txt is empty")
             for i in range(len(file)):
-                if i == 0:
+                if i == 1:
                     self.vials = [[int(y, 2) for y in z] for z in 
                                   [x.split(":") for x in file[i].rstrip().split(";")]]
-                else:
+                elif i == 2:
+                    self.initial_vials = [[int(y, 2) for y in z] for z in 
+                                  [x.split(":") for x in file[i].rstrip().split(";")]]
+                elif i > 2:
                     self.previous_vials.append([[int(y, 2) for y in z] for z in 
                                                 [x.split(":") for x in file[i].rstrip().split(";")]])
             self.vial_dist = [(self.WIDTH-60*math.ceil(len(self.vials)/2))/(math.ceil(len(self.vials)/2)+1),
                                (self.WIDTH-60*len(self.vials)//2)/(len(self.vials)//2+1)]
             link = lambda x: (lambda event: self.vial_onclick(x))
             for i in range(len(self.vials)):
-                VialDisplay.create_vial(self.canvas, 
-                                            self.vial_dist[self.vial_row(i)]*(self.vial_col(i)+1)+self.vial_col(i)*60, 
-                                            170+self.vial_row(i)*300, f"vial{i}", "#FFFFFF")
+                VialDisplay.create_vial(self.canvas, self.vial_dist[self.vial_row(i)]*(
+                    self.vial_col(i)+1)+self.vial_col(i)*60, 
+                    170+self.vial_row(i)*300, f"vial{i}", "#FFFFFF")
                 self.canvas.tag_bind(f"vial{i}", "<Button-1>", link(i))
                 self.update_vial(i)
             return True
