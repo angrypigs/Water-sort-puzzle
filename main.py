@@ -24,6 +24,8 @@ class App:
         self.initial_vials = []
         self.vial_dist = [0, 0]
         self.current_vial = -1
+        self.level = 0
+        self.undo_left = 5
         self.flag_menu = False
         # init app
         self.master = tk.Tk()
@@ -34,16 +36,26 @@ class App:
         self.canvas = tk.Canvas(self.master, height=self.HEIGHT, width=self.WIDTH, bd=0,
                                 highlightthickness=0, bg=self.GUI_COLORS[0][0])
         self.canvas.place(x=0,y=0)
-        self.canvas.create_oval(self.WIDTH-160, 20, self.WIDTH-100, 80, width=3, fill=self.GUI_COLORS[0][2],
+        self.canvas.create_oval(self.WIDTH-160, 20, self.WIDTH-100, 80, width=4, fill=self.GUI_COLORS[0][2],
                                 outline=self.GUI_COLORS[0][1], tags=("undo_btn"))
         self.canvas.create_text(self.WIDTH-130, 50, justify='center', anchor='center',
                                 text="\u293A", font=font.Font(size=30, weight='bold'),
                                 fill="#0F1939", state='disabled')
-        self.canvas.create_oval(self.WIDTH-80, 20, self.WIDTH-20, 80, width=3, fill=self.GUI_COLORS[0][2],
+        self.canvas.create_oval(self.WIDTH-120, 60, self.WIDTH-90, 90, width=3, fill=self.GUI_COLORS[0][2],
+                                outline=self.GUI_COLORS[0][1], state='disabled')
+        self.canvas.create_text(self.WIDTH-105, 75, justify='center', anchor='center',
+                                text=str(self.undo_left), font=font.Font(size=14, weight='bold'),
+                                fill="#0F1939", state='disabled', tags=("undo_left"))
+        self.canvas.create_oval(self.WIDTH-80, 20, self.WIDTH-20, 80, width=4, fill=self.GUI_COLORS[0][2],
                                 outline=self.GUI_COLORS[0][1], tags=("restart_btn"))
         self.canvas.create_text(self.WIDTH-50, 50, justify='center', anchor='center',
                                 text="\u2B6F", font=font.Font(size=30, weight='bold'),
                                 fill="#0F1939", state='disabled')
+        self.canvas.create_rectangle(self.WIDTH//2-160, 20, self.WIDTH//2+160, 100, width=4,
+                                     fill=self.GUI_COLORS[0][2], outline=self.GUI_COLORS[0][1])
+        self.canvas.create_text(self.WIDTH//2, 60, justify='center', anchor='center',
+                                text=f"Level {self.level}", font=font.Font(size=40, weight='bold'),
+                                fill="#0F1939", state='disabled', tags=("level_text"))
         self.canvas.tag_bind("undo_btn", "<Button-1>", lambda event: self.undo_move())
         self.canvas.tag_bind("restart_btn", "<Button-1>", lambda event: self.restart_game())
         self.load_game()
@@ -81,15 +93,6 @@ class App:
     def vial_col(self, index: int) -> int:
         return index%math.ceil(len(self.vials)/2)
 
-    def restart_game(self) -> None:
-        """
-        Restart game to initial state
-        """
-        self.vials = [x[:] for x in self.initial_vials]
-        self.previous_vials = [[x[:] for x in self.initial_vials]]
-        for i in range(len(self.vials)):
-            self.update_vial(i)
-
     def new_game(self) -> None:
         """
         Generate new game
@@ -117,6 +120,8 @@ class App:
                                         170+self.vial_row(i)*300, f"vial{i}", "#FFFFFF")
             self.canvas.tag_bind(f"vial{i}", "<Button-1>", link(i))
             self.update_vial(i)
+        self.level += 1
+        self.canvas.itemconfig("level_text", text=f"Level {self.level}")
         self.save_game()
 
     def update_vial(self, index: int) -> None:
@@ -133,11 +138,25 @@ class App:
                                             self.LIQUID_COLORS[0][self.vials[index][i]])
         self.canvas.tag_bind(f"vial{index}", "<Button-1>", lambda event: self.vial_onclick(index))
     
+    def restart_game(self) -> None:
+        """
+        Restart game to initial state
+        """
+        self.vials = [x[:] for x in self.initial_vials]
+        self.previous_vials = [[x[:] for x in self.initial_vials]]
+        for i in range(len(self.vials)):
+            self.update_vial(i)
+        self.undo_left = 5
+        self.canvas.itemconfig("undo_left", text=str(self.undo_left))
+        self.save_game()
+
     def undo_move(self) -> None:
         """
         Restore vials to state before last move
         """
-        if len(self.previous_vials) > 1:
+        if len(self.previous_vials) > 1 and self.undo_left > 0:
+            self.undo_left -= 1
+            self.canvas.itemconfig("undo_left", text=str(self.undo_left))
             self.previous_vials.pop(-1)
             self.vials = [x[:] for x in self.previous_vials[-1]]
             for i in range(len(self.vials)):
@@ -159,6 +178,10 @@ class App:
                                      self.WIDTH//2+100, self.HEIGHT-180,
                                      fill=self.GUI_COLORS[0][2], outline=self.GUI_COLORS[0][1],
                                      width=3, tags=("win_panel", "win_restart_btn"))
+        texts = ["Gut gut!", "Wypawliście!", "Unbelievebable!", "Ale sztos!"]
+        self.canvas.create_text(self.WIDTH//2, self.HEIGHT//2-60, font=self.normal_font(50, 'normal'),
+                                text=random.choice(texts), justify='center', anchor='center',
+                                state='disabled', tags=("win_panel"))
         self.canvas.create_text(self.WIDTH//2, self.HEIGHT-210, font=self.normal_font(30, 'normal'),
                                 text="Next level", justify='center', anchor='center',
                                 tags=("win_panel"), state='disabled')
@@ -171,7 +194,7 @@ class App:
         Save the game status to save.txt
         """
         file = open(self.res_path("save.txt"), "w")
-        file.write("\n")
+        file.write(f"{str(bin(self.level))};{str(bin(self.undo_left))}\n")
         file.write(";".join([":".join([str(bin(y)) for y in x]) for x in self.vials])+"\n")
         file.write(";".join([":".join([str(bin(y)) for y in x]) for x in self.initial_vials])+"\n")
         for i in self.previous_vials:
@@ -189,7 +212,12 @@ class App:
             if len(file)==0:
                 raise Exception("file save.txt is empty")
             for i in range(len(file)):
-                if i == 1:
+                if i == 0:
+                    l = [int(x, 2) for x in file[i].rstrip().split(";")]
+                    self.level, self.undo_left = l[0], l[1]
+                    self.canvas.itemconfig("level_text", text=f"Level {self.level}")
+                    self.canvas.itemconfig("undo_left", text=str(self.undo_left))
+                elif i == 1:
                     self.vials = [[int(y, 2) for y in z] for z in 
                                   [x.split(":") for x in file[i].rstrip().split(";")]]
                 elif i == 2:
@@ -242,11 +270,11 @@ class App:
                         self.previous_vials.pop(0)
                     self.previous_vials.append([x[:] for x in self.vials])
                     self.save_game()
-                    self.check_win()
                 VialDisplay.pick_vial(self.canvas, self.current_vial, False)
                 self.update_vial(self.current_vial)
                 self.update_vial(index)
                 self.current_vial = -1
+                self.check_win()
 
 if __name__ == "__main__":
     App()
