@@ -122,6 +122,8 @@ class App:
             self.update_vial(i)
         self.level += 1
         self.canvas.itemconfig("level_text", text=f"Level {self.level}")
+        self.undo_left = 5
+        self.canvas.itemconfig("undo_left", text=str(self.undo_left))
         self.save_game()
 
     def update_vial(self, index: int) -> None:
