@@ -3,8 +3,8 @@ import time
 
 def pick_vial(surf: tk.Canvas, index: int, on_off: bool) -> None:
     n = -1 if on_off else 1
-    for i in range(20):
-        surf.move(f"vial{index}", 0, 2*n)
+    for i in range(10):
+        surf.move(f"vial{index}", 0, 4*n)
         time.sleep(0.001)
         surf.update()
 
